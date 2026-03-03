@@ -14,6 +14,6 @@ export class RegisterDto {
   @Length(8, 20)
   password: string;
 
-  @IsEnum(Role)
-  role: Role;
+  // @IsEnum(Role)
+  // role: Role;
 }

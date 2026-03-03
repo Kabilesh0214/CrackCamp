@@ -1,8 +1,10 @@
-import { Controller, Post, Body, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Post, Patch, Body, Request, UsePipes, ValidationPipe, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDto } from './login.dto';
+import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { VerifyDto } from './dto/verify.dto';
+import { selectRoleDto } from './dto/select-role.dto';
+import { JwtAuthGuard } from './jwt.authguard';
 
 @Controller('auth')
 export class AuthController {
@@ -24,6 +26,14 @@ export class AuthController {
     return this.authService.login(body);
   }
   
+  @UseGuards(JwtAuthGuard)
+  @Patch('select-role')
+  async selectRole(
+    @Body() body: selectRoleDto, 
+    @Request() req) {
+      return this.authService.selectRole(req.user.userId, body.role);
+  }
+
 }
 
 

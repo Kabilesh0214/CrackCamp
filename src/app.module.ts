@@ -5,7 +5,8 @@ import { ConfigModule } from '@nestjs/config';
 import { RedisModule } from 'redis.module';
 import { AuthModule } from './auth/auth.module';
 
- // makes env accessible everywhere
+
+// makes env accessible everywhere
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -14,8 +15,9 @@ import { AuthModule } from './auth/auth.module';
     AuthModule,
     RedisModule
   ],
+
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
 

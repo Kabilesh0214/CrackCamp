@@ -1,16 +1,19 @@
-version: '3.8'
-
 services:
   app:
     build: .
     container_name: nest_app
     ports:
-      - "3000:3000"
+      - "4000:4000"
     depends_on:
       - redis
     environment:
+      PORT: 4000
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      DATABASE_URL: postgresql://postgres:pandiselvi@host.docker.internal:5432/CrackCamp
+      JWT_SECRET: ${JWT_SECRET}
+      EMAIL_USER: kabilesh0214@gmail.com
+      EMAIL_PASS: ${EMAIL_PASS}
     volumes:
       - .:/app
     command: npm run start:dev
