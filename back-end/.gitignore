@@ -147,3 +147,5 @@ vite.config.ts.timestamp-*
 .env
 postman collection/
 *.postman_collection.json
+
+.DS_Store
