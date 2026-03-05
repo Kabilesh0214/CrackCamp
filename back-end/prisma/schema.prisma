@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id       String  @id @default(uuid())
+  username String
+  email    String  @unique
+  password String
+  role     Role?
+
+  selfIntros SelfIntro[]
+  conversations Conversation[]
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  messages  Message[]
+  createdAt DateTime @default(now())
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+
+  role           String
+  content        String
+
+  createdAt      DateTime @default(now())
+}
+
+model SelfIntro {
+  id          String   @id @default(uuid())
+  title       String?
+  description String?
+  videoUrl    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  WebDeveloper
+  DataAnalyst
+  ApplicationDeveloper
+  CloudEngineer
+  CybersecurityAnalyst
+  MachineLearningEngineer
+}

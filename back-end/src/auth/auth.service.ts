@@ -52,7 +52,10 @@ export class AuthService {
     // send otp via email 
     await this.mailService.sendOTP(data.email, otp);
 
-    return { message: "OTP sent" };
+    return {
+      success: true,
+      message: "OTP sent"
+    };
 
   }
 
@@ -123,6 +126,7 @@ export class AuthService {
     // Generates JSON Web Token 
 
     const token = await this.generateToken(user)
+
     return {
       success: true,
       message: "Login successful",
@@ -131,12 +135,16 @@ export class AuthService {
 
   }
 
+  async selectRole(req, role) {
 
-  async selectRole(userId, role) {
-    return this.prisma.user.update({
-      where: { id: userId },
+    await this.prisma.user.update({
+      where: { id: req.user.userId },
       data: { role },
     });
+
+    return {
+      success: true
+    }
   }
 
 

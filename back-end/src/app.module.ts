@@ -4,6 +4,9 @@ import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
 import { RedisModule } from 'redis.module';
 import { AuthModule } from './auth/auth.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { SelfIntroModule } from './self-intro/self-intro.module';
+import { ChatbotModule } from './chatbot/chatbot.module';
 
 
 // makes env accessible everywhere
@@ -13,7 +16,10 @@ import { AuthModule } from './auth/auth.module';
       isGlobal: true,
     }),
     AuthModule,
-    RedisModule
+    RedisModule,
+    DashboardModule,
+    SelfIntroModule,
+    ChatbotModule
   ],
 
   controllers: [AppController],

@@ -11,9 +11,9 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       DATABASE_URL: postgresql://postgres:pandiselvi@host.docker.internal:5432/CrackCamp
-      JWT_SECRET: ${JWT_SECRET}
-      EMAIL_USER: kabilesh0214@gmail.com
-      EMAIL_PASS: ${EMAIL_PASS}
+      JWT_SECRET: CrackCampHasBeenMadeForDesiresWithoutActualPathAndData
+      EMAIL_USER: kabilesh50214@gmail.com
+      EMAIL_PASS: zckvlirgfpnkdnjg
     volumes:
       - .:/app
     command: npm run start:dev
