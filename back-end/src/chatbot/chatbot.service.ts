@@ -2,13 +2,14 @@ import { Injectable, Inject } from '@nestjs/common';
 import axios from 'axios';
 import Redis from 'ioredis';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { SYSTEM_PROMPT } from './system.prompt';
 
 @Injectable()
 export class ChatbotService {
 
   constructor(
       private prisma: PrismaService,
-      @Inject('REDIS_CLIENT') private readonly redis: Redis, //connect Redis
+      @Inject('REDIS_CLIENT') private readonly redis: Redis,
   ) { }
   
 
@@ -51,13 +52,20 @@ export class ChatbotService {
         await this.redis.expire(redisKey, 600);
       }
 
-      const conversation = messages.map(m => {
+      const conversation = [
+        {
+          role: "user",
+          parts: [{ text: SYSTEM_PROMPT }]
+        }
+      ];
+      
+      messages.forEach(m => {
         const parsed = JSON.parse(m);
-
-        return {
+      
+        conversation.push({
           role: parsed.role === "assistant" ? "model" : "user",
           parts: [{ text: parsed.content }]
-        };
+        });
       });
 
       conversation.push({

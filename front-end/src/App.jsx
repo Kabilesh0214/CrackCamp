@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Route, Routes } from 'react-router-dom';
-import Login from './pages/login';
-import Register from './pages/register';
+import Login from './pages/Login';
+import Register from './pages/Register';
 import Verify from './pages/verify';
-import SelectRole from './pages/select-role';
+import SelectRole from './pages/SelectRole';
+import SelfIntro from './pages/SelfIntro';
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/verify" element={<Verify />} />
       <Route path="/select-role" element={<SelectRole />} />
+      <Route path="/self-intro" element={<SelfIntro />} />
     </Routes>
   )
 }
