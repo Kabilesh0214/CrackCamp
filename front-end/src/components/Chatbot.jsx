@@ -2,23 +2,36 @@ import { useState } from "react";
 import ChatWindow from "./ChatWindow";
 import api from "../api/axios";
 
-function ChatBot () {
-
+function ChatBot() {
   const [open, setOpen] = useState(false);
 
-  async function createConversation() {
-    if (open === false) {
-      const response = await api.post("/chatbot/create-conversation");
-      localStorage.setItem("Conversation ID", response.data.conversationId);
+  const toggleConversation = async () => {
+    if (!open) {
+      const existingConversationId = localStorage.getItem("Conversation ID");
+      if (!existingConversationId) {
+        try {
+          const response = await api.post("/chatbot/create-conversation");
+          localStorage.setItem("Conversation ID", response.data.conversationId);
+        } catch (err) {
+          console.error("Failed to initialize chatbot session:", err);
+        }
+      }
     }
     setOpen(!open);
-  }
+  };
 
   return (
-  <>
-    {open && <ChatWindow />}
-    <button onClick={createConversation}>Chatbot</button>
-  </>
-  )}
+    <>
+      {open && <ChatWindow onClose={() => setOpen(false)} />}
+      <button className="chatbot-trigger" onClick={toggleConversation} aria-label="Chat with Assistant">
+        {open ? (
+          <span style={{ fontSize: "1.5rem", fontWeight: "bold" }}>✕</span>
+        ) : (
+          <span style={{ fontSize: "1.6rem" }}>💬</span>
+        )}
+      </button>
+    </>
+  );
+}
 
 export default ChatBot;

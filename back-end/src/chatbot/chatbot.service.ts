@@ -1,8 +1,11 @@
 import { Injectable, Inject } from '@nestjs/common';
-import axios from 'axios';
+import { Ollama } from 'ollama';
 import Redis from 'ioredis';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { SYSTEM_PROMPT } from './system.prompt';
+
+const ollama = new Ollama({ host: process.env.OLLAMA_HOST || 'http://localhost:11434' });
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2';
 
 @Injectable()
 export class ChatbotService {
@@ -52,36 +55,30 @@ export class ChatbotService {
         await this.redis.expire(redisKey, 600);
       }
 
-      const conversation = [
-        {
-          role: "user",
-          parts: [{ text: SYSTEM_PROMPT }]
-        }
+      // Build Ollama message format
+      const ollamaMessages = [
+        { role: 'system', content: SYSTEM_PROMPT },
       ];
-      
+
       messages.forEach(m => {
         const parsed = JSON.parse(m);
-      
-        conversation.push({
-          role: parsed.role === "assistant" ? "model" : "user",
-          parts: [{ text: parsed.content }]
+        ollamaMessages.push({
+          role: parsed.role === 'assistant' ? 'assistant' : 'user',
+          content: parsed.content,
         });
       });
 
-      conversation.push({
-        role: "user",
-        parts: [{ text: data.prompt }]
+      ollamaMessages.push({
+        role: 'user',
+        content: data.prompt,
       });
 
-      const model = "gemini-2.5-flash";
+      const response = await ollama.chat({
+        model: OLLAMA_MODEL,
+        messages: ollamaMessages,
+      });
 
-      const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
-        { contents: conversation }
-      );
-
-      const reply =
-        response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const reply = response.message.content;
 
       await this.prisma.message.create({
         data: {
@@ -117,7 +114,7 @@ export class ChatbotService {
 
     } catch (error) {
       return {
-        error: error.response?.data || error.message
+        error: error.message || 'Ollama request failed'
       };
     }
   }

@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -41,7 +41,6 @@ export class AuthService {
       otpHash,
     };
 
-    // stores temporary data to redis 
     await this.redis.set(
       `register:${data.email}`,
       JSON.stringify(tempData),
@@ -49,7 +48,6 @@ export class AuthService {
       300
     );
 
-    // send otp via email 
     await this.mailService.sendOTP(data.email, otp);
 
     return {
@@ -69,7 +67,6 @@ export class AuthService {
       throw new BadRequestException("OTP expired or not found");
     }
 
-    // Check redis otp with otp from user
     const parsedData = JSON.parse(storedData);
 
     const isValid = await bcrypt.compare(
@@ -81,7 +78,6 @@ export class AuthService {
       throw new BadRequestException("Invalid OTP");
     }
 
-    // Store actual data to Postgres
     const newUser = await this.prisma.user.create({
       data: {
         username: parsedData.username,
@@ -90,23 +86,21 @@ export class AuthService {
       },
     });
 
-    // Delete the temporary data
     await this.redis.del(`register:${email}`);
 
-    // Gives the token to Frontend
-    const token = await this.generateToken(newUser);
+    const { accessToken, refreshToken } = await this.generateTokenPair(newUser);
 
     return {
       success: true,
       message: "User registered successfully",
-      token: token,
+      accessToken,
+      refreshToken,
     };
   }
 
 
   async login(data: LoginDto) {
 
-    // Checks if user exist
     const user = await this.findUser(data.email);
 
     if (!user) {
@@ -123,16 +117,71 @@ export class AuthService {
       throw new BadRequestException("Invalid credentials")
     }
 
-    // Generates JSON Web Token 
-
-    const token = await this.generateToken(user)
+    // Generates token pair (access + refresh)
+    const { accessToken, refreshToken } = await this.generateTokenPair(user);
 
     return {
       success: true,
       message: "Login successful",
-      token: token
+      accessToken,
+      refreshToken,
     }
 
+  }
+
+  async refreshTokens(refreshToken: string) {
+    if (!refreshToken) {
+      throw new UnauthorizedException("No refresh token provided");
+    }
+
+    // Find the refresh token in DB
+    const storedToken = await this.prisma.refreshToken.findUnique({
+      where: { token: refreshToken },
+    });
+
+    if (!storedToken) {
+      throw new UnauthorizedException("Invalid refresh token");
+    }
+
+    // Check expiry
+    if (storedToken.expiresAt < new Date()) {
+      await this.prisma.refreshToken.delete({ where: { id: storedToken.id } });
+      throw new UnauthorizedException("Refresh token expired");
+    }
+
+    // Get the user
+    const user = await this.prisma.user.findUnique({
+      where: { id: storedToken.userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException("User not found");
+    }
+
+    // Rotate: delete old token and issue new pair
+    await this.prisma.refreshToken.delete({ where: { id: storedToken.id } });
+
+    const newTokens = await this.generateTokenPair(user);
+
+    return {
+      success: true,
+      accessToken: newTokens.accessToken,
+      refreshToken: newTokens.refreshToken,
+    };
+  }
+
+  async logout(refreshToken: string) {
+    if (refreshToken) {
+      // Delete the specific refresh token
+      await this.prisma.refreshToken.deleteMany({
+        where: { token: refreshToken },
+      });
+    }
+
+    return {
+      success: true,
+      message: "Logged out successfully",
+    };
   }
 
   async selectRole(req, role) {
@@ -165,22 +214,47 @@ export class AuthService {
     return hashedPassword;
   }
 
-  private async generateToken(user): Promise<string> {
+  private async generateTokenPair(user): Promise<{ accessToken: string; refreshToken: string }> {
     const payload = {
       sub: user.id,
       email: user.email,
       role: user.role,
     };
 
-    const token = this.jwtService.sign(payload);
-    return token;
+    // Short-lived access token (15 minutes)
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+
+    // Long-lived refresh token (7 days) — stored in DB
+    const refreshTokenValue = crypto.randomBytes(40).toString('hex');
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    // Clean up old refresh tokens for this user (max 5 active sessions)
+    const existingTokens = await this.prisma.refreshToken.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (existingTokens.length >= 5) {
+      const toDelete = existingTokens.slice(0, existingTokens.length - 4);
+      await this.prisma.refreshToken.deleteMany({
+        where: { id: { in: toDelete.map(t => t.id) } },
+      });
+    }
+
+    await this.prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        token: refreshTokenValue,
+        expiresAt,
+      },
+    });
+
+    return { accessToken, refreshToken: refreshTokenValue };
   }
 
   private generateOTP(): number {
     return crypto.randomInt(100000, 999999);
   }
 }
-
-
-
-

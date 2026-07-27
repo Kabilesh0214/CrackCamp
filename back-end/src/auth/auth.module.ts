@@ -9,7 +9,7 @@ import { JwtStrategy } from './jwt.strategy';
 
 @Module({
   imports: [
-    PrismaModule,
+    PrimaModule,
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET,

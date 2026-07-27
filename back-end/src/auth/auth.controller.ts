@@ -28,12 +28,8 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response
   ) {
     const result = await this.authService.verify(body);
-    res.cookie('access_token', result.token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-    });
-    return result;
+    this.setTokenCookies(res, result.accessToken, result.refreshToken);
+    return { success: result.success, message: result.message };
   }
 
   @Public()
@@ -43,11 +39,33 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response
   ) {
     const result = await this.authService.login(data);
-    res.cookie("access_token", result.token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-    });
+    this.setTokenCookies(res, result.accessToken, result.refreshToken);
+    return { success: result.success, message: result.message };
+  }
+
+  @Public()
+  @Post('refresh')
+  async refresh(
+    @Request() req,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const refreshToken = req.cookies?.refresh_token;
+    const result = await this.authService.refreshTokens(refreshToken);
+    this.setTokenCookies(res, result.accessToken, result.refreshToken);
+    return { success: result.success };
+  }
+
+  @Public()
+  @Post('logout')
+  async logout(
+    @Request() req,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const refreshToken = req.cookies?.refresh_token;
+    const result = await this.authService.logout(refreshToken);
+
+    res.clearCookie('access_token', { httpOnly: true, secure: false, sameSite: 'lax' });
+    res.clearCookie('refresh_token', { httpOnly: true, secure: false, sameSite: 'lax' });
 
     return result;
   }
@@ -60,7 +78,19 @@ export class AuthController {
     return this.authService.selectRole(req, body.role);
   }
 
+  private setTokenCookies(res: Response, accessToken: string, refreshToken: string) {
+    res.cookie('access_token', accessToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+    res.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+  }
+
 }
-
-
-

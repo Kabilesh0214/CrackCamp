@@ -13,8 +13,12 @@ model User {
   password String
   role     Role?
 
-  selfIntros SelfIntro[]
-  conversations Conversation[]
+  selfIntros      SelfIntro[]
+  conversations   Conversation[]
+  mcqAttempts     McqAttempt[]
+  dsaProgress     DsaProgress[]
+  resumeAnalyses  ResumeAnalysis[]
+  refreshTokens   RefreshToken[]
 }
 
 model Conversation {
@@ -55,4 +59,88 @@ enum Role {
   CloudEngineer
   CybersecurityAnalyst
   MachineLearningEngineer
+}
+
+model ResourceTutorial {
+  id          Int   @id @default(autoincrement())
+  role        Role
+  skill       String
+  source      String
+  url         String
+  description String
+  imageURL    String
+  cost        Int   @default(0)
+}
+
+model Skill {
+  id         Int @id @default(autoincrement())
+  skill      String
+  role       Role
+}
+
+model McqQuestion {
+  id            Int      @id @default(autoincrement())
+  role          Role
+  category      String
+  question      String
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctAnswer String   // "A" | "B" | "C" | "D"
+  explanation   String
+}
+
+model McqAttempt {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String
+  score       Int
+  total       Int
+  completedAt DateTime @default(now())
+}
+
+model DsaProgress {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topicId         Int      // matches the frontend dsaTopics[].id
+  subtopicName    String
+  completed       Boolean  @default(true)
+  completedAt     DateTime @default(now())
+
+  @@unique([userId, topicId, subtopicName])
+}
+
+model ResumeAnalysis {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName       String
+  overallScore   Int
+  summary        String
+  strengths      String[] // PostgreSQL text array
+  weaknesses     String[]
+  missingKeywords String[]
+  improvementTips String[]
+  analysedAt     DateTime @default(now())
+}
+
+model RefreshToken {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token       String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+}
+
+model InterviewQuestion {
+  id         Int    @id @default(autoincrement())
+  role       Role
+  category   String // "Behavioral" | "Technical" | "System Design"
+  difficulty String // "Easy" | "Medium" | "Hard"
+  question   String
+  answer     String
 }
