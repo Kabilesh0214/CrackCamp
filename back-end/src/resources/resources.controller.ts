@@ -1,6 +1,5 @@
-import { Controller, Get, Request, Body } from '@nestjs/common';
+import { Controller, Get, Query, Request } from '@nestjs/common';
 import { ResourcesService } from './resources.service';
-
 
 @Controller('resources')
 export class ResourcesController {
@@ -9,16 +8,16 @@ export class ResourcesController {
 
   @Get('skills')
   async getSkills(@Request() req) {
-    return this.resourcesService.getSkills(req)
+    return this.resourcesService.getSkills(req);
   }
 
   @Get('tutorials')
-  async getTutorials(@Body() body) {
-    return this.resourcesService.getTutorials(body)
+  async getTutorials(@Query('skill') skill: string) {
+    return this.resourcesService.getTutorials({ skill });
   }
 
   @Get('books')
-  async getBooks(@Body() body) {
-    return this.resourcesService.getBooks(body)
+  async getBooks(@Request() req, @Query('skill') skill: string) {
+    return this.resourcesService.getBooks({ skill });
   }
 }

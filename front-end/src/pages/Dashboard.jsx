@@ -97,7 +97,7 @@ function Dashboard() {
 
     // Fetch books for selected skill
     setBooksLoading(true);
-    api.get("/resources/books", { data: { skill: selectedSkill } })
+    api.get("/resources/books", { params: { skill: selectedSkill } })
       .then(res => {
         setBooks(res.data || []);
       })
@@ -111,7 +111,7 @@ function Dashboard() {
 
     // Fetch tutorials for selected skill
     setTutorialsLoading(true);
-    api.get("/resources/tutorials", { data: { skill: selectedSkill } })
+    api.get("/resources/tutorials", { params: { skill: selectedSkill } })
       .then(res => {
         setTutorials(res.data || []);
       })

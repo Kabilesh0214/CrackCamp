@@ -2,13 +2,13 @@
 
 Welcome to **CrackCamp**, an advanced role-based interview preparation platform designed to help aspiring software engineers, data analysts, cloud engineers, and cybersecurity professionals bridge the gap between academic theory and real-world hiring standards. 
 
-CrackCamp guides users through structured role-specific learning paths, provides recommended reading and course materials, hosts an **Interactive Mock Interview Studio** with webcam/video upload capabilities, and embeds a **NestJS + Redis-cached AI Recruiter Chatbot** powered by Gemini.
+CrackCamp guides users through structured role-specific learning paths, provides recommended reading and course materials, hosts an **Interactive Mock Interview Studio** with webcam/video upload capabilities, offers automated **AI Resume Analysis**, generates custom **4-week study roadmaps**, and embeds a **NestJS + Redis-cached AI Recruiter Chatbot** powered by Gemini.
 
 ---
 
 ## 🏗️ Architecture Overview
 
-CrackCamp is built with a modern decoupled architecture consisting of a **React SPA frontend**, a **NestJS backend**, a **PostgreSQL relational database** for persistent data, and a **Redis in-memory store** for fast OTP processing and chatbot message caching.
+CrackCamp is built with a modern decoupled architecture consisting of a **React SPA frontend**, a **NestJS backend**, a **PostgreSQL relational database** for persistent data, and a **Redis in-memory store** for fast OTP processing, roadmap caching, and chatbot message buffering.
 
 ```mermaid
 graph TD
@@ -16,7 +16,7 @@ graph TD
     API <-->|Prisma Client| DB[(PostgreSQL Database)]
     API <-->|ioredis| Cache[(Redis Server)]
     API -->|Nodemailer| SMTP[Gmail SMTP Service]
-    API -->|Axios| Gemini[Google Gemini API\ngemini-2.5-flash]
+    API -->|Google Gen AI SDK| Gemini[Google Gemini API\ngemini-2.5-flash]
     API -->|SDK| S3[AWS S3 Bucket\nVideo Uploads]
 ```
 
@@ -27,18 +27,18 @@ graph TD
 ### Frontend
 - **Framework:** React 18+ (Vite)
 - **Routing:** React Router DOM v6
-- **HTTP Client:** Axios (interceptor config with baseURL)
+- **HTTP Client:** Axios (configured with interceptors for token auto-refresh and cookie handling)
 - **Styling:** Vanilla CSS (Modern dark mode dashboard, glassmorphism, responsive grid layouts)
 - **Multimedia:** HTML5 MediaDevices API (`getUserMedia` for webcam capture and recording)
 
 ### Backend
 - **Framework:** NestJS (v11)
-- **ORM:** Prisma Client (v7)
+- **ORM:** Prisma Client (v7) using the Pg driver adapter for PostgreSQL
 - **Database:** PostgreSQL (v15)
 - **Cache & Temp Store:** Redis (v7)
-- **Authentication:** Passport JWT, Bcrypt
+- **Authentication:** JWT, Cookie-based authorization, Bcrypt hashing
 - **Communications:** Nodemailer (SMTP for OTP mailing)
-- **AI Integration:** Google Generative AI (Gemini 2.5 Flash) via HTTPS
+- **AI Integration:** Google Generative AI SDK (`@google/generative-ai` v2.5-flash)
 
 ### Deployment & DevOps
 - **Containerization:** Docker & Docker Compose
@@ -54,15 +54,20 @@ CrackCamp/
 ├── back-end/
 │   ├── src/
 │   │   ├── auth/            # JWT auth, Redis OTP signup flow, Gmail service
-│   │   ├── chatbot/         # AI mentor chatbot service powered by Gemini
-│   │   ├── dashboard/       # User profile & progress status controller
+│   │   ├── chatbot/         # AI mentor chatbot service powered by Gemini 2.5
+│   │   ├── dashboard/       # User profile & progress status controller (DSA, MCQ, Resume)
+│   │   ├── mcq/             # Multiple choice question generator & test grading
+│   │   ├── question-bank/   # Role-based interview question bank provider
 │   │   ├── resources/       # Skill metadata, OpenLibrary books & seeded tutorials
+│   │   ├── resume/          # AI Resume Analyser using Gemini (PDF parsing)
+│   │   ├── roadmap/         # AI Roadmap generator using Gemini
 │   │   ├── self-intro/      # Video upload controllers & AWS S3 integration
 │   │   ├── prisma/          # Prisma database service connection
 │   │   ├── main.ts          # NestJS bootstrapper & global config
 │   │   └── app.module.ts    # Main application module injection
 │   ├── prisma/
 │   │   ├── schema.prisma    # Prisma DB Schema definition (Postgres)
+│   │   ├── seed.ts          # DB Seed script populating MCQ, Q&A, and Tutorials
 │   │   └── migrations/      # DB Schema migrations history
 │   ├── Dockerfile           # Backend containerization rules
 │   └── package.json         # Node dependencies
@@ -70,7 +75,7 @@ CrackCamp/
     ├── src/
     │   ├── api/             # Axios instance config
     │   ├── components/      # Common components (Chatbot widget, ChatWindow)
-    │   ├── pages/           # Page routes (Login, Register, Verify OTP, SelectRole, Dashboard, SelfIntro)
+    │   ├── pages/           # Page routes (Login, Register, Verify OTP, SelectRole, Dashboard, SelfIntro, MCQ, DSA, Roadmap, Resume)
     │   ├── App.jsx          # Protected/Public routing rules
     │   ├── index.css        # Core styling sheet (Dark mode colors, grid structure)
     │   └── main.jsx         # React application entry point
@@ -124,17 +129,27 @@ The dashboard displays the core skills associated with the user's active career 
 - 📖 **Recommended Reference Books:** Pulled dynamically on the frontend via the open-source **OpenLibrary Search API** (`https://openlibrary.org/search.json?q={skill}`).
 - 📹 **Seeded Video Tutorials:** Served from the local PostgreSQL `ResourceTutorial` table containing pre-vetted video content (e.g., Free vs Paid courses).
 
-### 4. Mock Interview Prep Studio
-Located at `/self-intro`, this is the interactive simulation center where candidates record or upload their 60-second elevator pitches:
-- **Webcam Interface:** Uses the browser's `MediaRecorder` API to record video stream chunks locally, preview the result, and save the file.
-- **File Drag-and-Drop:** Built-in drag-and-drop zone supporting standard formats (`.webm`, `.mp4`, `.mov`).
-- **Cloud Upload:** Submits files via multipart/form-data to the NestJS upload controller configured with an AWS S3 bucket destination (`crackcamp-selfintro-videos-kabi-001`).
+### 4. AI Study Roadmap Generator
+Located at `/roadmap`, this module allows candidates to generate or regenerate a customized 4-week study path:
+- **AI Planning:** Invokes Gemini (`gemini-2.5-flash`) with role-specific system prompts.
+- **Structured Plan:** Produces a detailed schedule containing weekly themes, daily goals/tasks, milestones, and links to recommended resources (such as specific LeetCode tags or books).
+- **Caching:** Roadmaps are cached in Redis (`roadmap:${userId}`) for 30 minutes to reduce API latency.
 
-### 5. AI Recruiter Chatbot
-Embedded at the bottom-right of the dashboard and integrated fully into the Interview Prep page.
-- **Gemini API:** Uses `gemini-2.5-flash` model to analyze student requests and simulated responses.
-- **Role-based prompt:** The bot acts as **CrackCamp AI Mentor**, a calm technical coach guiding users through DSA, resume structure, behavioral STAR frameworks, and code optimization.
-- **Redis Message Buffering:** To reduce PostgreSQL query load and keep chat speeds instantaneous, the chatbot caches the last 10 messages of the conversation in Redis (`chat:${conversationId}`). When a user queries, it pulls from Redis, appends new messages, trims the list to 10, and runs a background write to PostgreSQL for permanent message history.
+### 5. AI Resume Analyser
+Located at `/resume`, users can drop their CV/Resume to get feedback:
+- **PDF Text Extraction:** Parses PDF raw data using `pdf-parse`.
+- **Targeted Grading:** Sends the extracted text to Gemini, scoring the resume on a scale of 0-100 relative to the requirements of the user's chosen career track.
+- **Detailed Feedback:** Highlights strengths, gaps/weaknesses, missing keywords, and actionable optimization tips.
+
+### 6. MCQ & Interview Question Arena
+Includes local interactive practice modules populated with curated, database-backed questions:
+- **MCQ Test:** Shuffles and delivers 10 role-specific multiple-choice questions with a 45-second timer per question. Scores are graded and saved to database history.
+- **Question Bank:** Displays curated, categorized behavioral, technical, and system design questions mapped with standard model answers.
+
+### 7. Interactive Recruiter Chatbot
+Embedded as a floating widget on the dashboard:
+- **Gemini Engine:** Powered by `gemini-2.5-flash` with system guidelines instructing it to act as a calm, helpful career coach.
+- **State Optimization:** Caches the last 10 messages of the conversation in Redis (`chat:${conversationId}`) to achieve instantaneous response latency.
 
 ---
 
@@ -160,6 +175,7 @@ The backend service expects environment variables. A pre-set list is provided in
 ---
 
 ### Run using Docker Compose (Recommended)
+
 This fires up PostgreSQL, Redis, NestJS, and React concurrently.
 
 1. Navigate to the project root directory:
@@ -168,35 +184,18 @@ This fires up PostgreSQL, Redis, NestJS, and React concurrently.
    ```
 2. Build and run the containers:
    ```bash
-   docker compose up --build
+   docker compose up -d --build
    ```
-3. Once running:
+3. Sync the database schema and populate seed data:
+   ```bash
+   # Push current schema to Docker PostgreSQL DB
+   DATABASE_URL="postgresql://postgres:postgres@localhost:5433/crackcamp" npx prisma db push --schema=back-end/prisma/schema.prisma
+
+   # Seed the database
+   DATABASE_URL="postgresql://postgres:postgres@localhost:5433/crackcamp" npx ts-node back-end/prisma/seed.ts
+   ```
+4. Once running:
    - **React Frontend:** Available at [http://localhost:5173](http://localhost:5173)
    - **NestJS Backend:** Available at [http://localhost:4000](http://localhost:4000)
    - **PostgreSQL:** Listening on port `5433` (externally)
    - **Redis:** Listening on port `6379` (externally)
-
----
-
-### Running Manually for Development
-
-If you prefer to run services in watch modes directly on your host machine:
-
-#### 1. Databases (Postgres & Redis)
-Ensure you start PostgreSQL (on port 5433 or update port in `.env` to 5432) and Redis (on port 6379).
-
-#### 2. Start Backend API
-```bash
-cd back-end
-npm install
-npx prisma db push    # Syncs database schema with schema.prisma
-npm run start:dev     # Starts backend with watch-reload enabled
-```
-
-#### 3. Start Frontend UI
-```bash
-cd front-end
-npm install
-npm run dev           # Starts Vite development server
-```
-Go to [http://localhost:5173](http://localhost:5173) in your browser.

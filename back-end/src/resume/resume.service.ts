@@ -1,14 +1,15 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Ollama } from 'ollama';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 const pdfParse = require('pdf-parse');
-
-const ollama = new Ollama({ host: process.env.OLLAMA_HOST || 'http://localhost:11434' });
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2';
 
 @Injectable()
 export class ResumeService {
-  constructor(private prisma: PrismaService) {}
+  private genAI: GoogleGenerativeAI;
+
+  constructor(private prisma: PrismaService) {
+    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+  }
 
   async analyseResume(req, file: Express.Multer.File) {
     if (!file) {
@@ -31,11 +32,15 @@ export class ResumeService {
       const pdfData = await pdfParse(file.buffer);
       resumeText = pdfData.text;
     } catch (err) {
-      throw new BadRequestException('Failed to parse PDF file. Please ensure the file is a valid PDF.');
+      throw new BadRequestException(
+        'Failed to parse PDF file. Please ensure the file is a valid PDF.',
+      );
     }
 
     if (!resumeText || resumeText.trim().length < 50) {
-      throw new BadRequestException('Could not extract enough text from the PDF. The file may be image-based or empty.');
+      throw new BadRequestException(
+        'Could not extract enough text from the PDF. The file may be image-based or empty.',
+      );
     }
 
     const prompt = `You are a senior tech recruiter and career coach specializing in the ${roleLabel} domain.
@@ -60,17 +65,16 @@ Analyse this resume and provide structured feedback in the following exact JSON 
 Return ONLY the JSON object, no other text.`;
 
     try {
-      const response = await ollama.chat({
-        model: OLLAMA_MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        format: 'json',
+      const model = this.genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        generationConfig: { responseMimeType: 'application/json' },
       });
 
-      const rawText = response.message.content;
+      const result = await model.generateContent(prompt);
+      const rawText = result.response.text();
 
       // Strip markdown code fences if present
       const cleaned = rawText.replace(/```json|```/g, '').trim();
-
       const parsed = JSON.parse(cleaned);
 
       // Persist the analysis result to the database

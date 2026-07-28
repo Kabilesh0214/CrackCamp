@@ -1,121 +1,93 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { Ollama } from 'ollama';
+import { GoogleGenerativeAI, Content } from '@google/generative-ai';
 import Redis from 'ioredis';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { SYSTEM_PROMPT } from './system.prompt';
 
-const ollama = new Ollama({ host: process.env.OLLAMA_HOST || 'http://localhost:11434' });
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2';
-
 @Injectable()
 export class ChatbotService {
+  private genAI: GoogleGenerativeAI;
 
   constructor(
-      private prisma: PrismaService,
-      @Inject('REDIS_CLIENT') private readonly redis: Redis,
-  ) { }
-  
+    private prisma: PrismaService,
+    @Inject('REDIS_CLIENT') private readonly redis: Redis,
+  ) {
+    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+  }
 
   async createConversation(data) {
-      const conversation = await this.prisma.conversation.create({
-        data: { userId: data.user.userId }
-      });
+    const conversation = await this.prisma.conversation.create({
+      data: { userId: data.user.userId },
+    });
 
-      const conversationId = conversation.id;
-
-      return {conversationId: conversationId};
+    return { conversationId: conversation.id };
   }
 
   async prompt(data) {
     try {
-
-      let conversationId = data.conversationId;
-
+      const conversationId = data.conversationId;
       const redisKey = `chat:${conversationId}`;
 
-      let messages = await this.redis.lrange(redisKey, 0, 9);
+      // Load last 10 messages from Redis or DB
+      let rawMessages = await this.redis.lrange(redisKey, 0, 9);
 
-      if (messages.length === 0) {
-
+      if (rawMessages.length === 0) {
         const dbMessages = await this.prisma.message.findMany({
           where: { conversationId },
-          orderBy: { createdAt: "desc" },
-          take: 10
+          orderBy: { createdAt: 'desc' },
+          take: 10,
         });
 
-        messages = dbMessages.reverse().map(m => JSON.stringify({
-          role: m.role,
-          content: m.content
-        }));
+        rawMessages = dbMessages.reverse().map((m) =>
+          JSON.stringify({ role: m.role, content: m.content }),
+        );
 
-        for (const msg of messages) {
+        for (const msg of rawMessages) {
           await this.redis.rpush(redisKey, msg);
         }
 
         await this.redis.expire(redisKey, 600);
       }
 
-      // Build Ollama message format
-      const ollamaMessages = [
-        { role: 'system', content: SYSTEM_PROMPT },
-      ];
+      // Build Gemini conversation history (must alternate user/model)
+      const history: Content[] = rawMessages
+        .map((m) => JSON.parse(m))
+        .map((m) => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }],
+        }));
 
-      messages.forEach(m => {
-        const parsed = JSON.parse(m);
-        ollamaMessages.push({
-          role: parsed.role === 'assistant' ? 'assistant' : 'user',
-          content: parsed.content,
-        });
+      // Start Gemini chat with history
+      const model = this.genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        systemInstruction: SYSTEM_PROMPT,
       });
 
-      ollamaMessages.push({
-        role: 'user',
-        content: data.prompt,
-      });
+      const chat = model.startChat({ history });
+      const result = await chat.sendMessage(data.prompt);
+      const reply = result.response.text();
 
-      const response = await ollama.chat({
-        model: OLLAMA_MODEL,
-        messages: ollamaMessages,
-      });
-
-      const reply = response.message.content;
-
+      // Persist to DB
       await this.prisma.message.create({
-        data: {
-          conversationId,
-          role: "user",
-          content: data.prompt
-        }
+        data: { conversationId, role: 'user', content: data.prompt },
       });
-
       await this.prisma.message.create({
-        data: {
-          conversationId,
-          role: "assistant",
-          content: reply
-        }
+        data: { conversationId, role: 'assistant', content: reply },
       });
 
+      // Update Redis cache
       await this.redis.rpush(
         redisKey,
-        JSON.stringify({ role: "user", content: data.prompt })
+        JSON.stringify({ role: 'user', content: data.prompt }),
+        JSON.stringify({ role: 'assistant', content: reply }),
       );
-
-      await this.redis.rpush(
-        redisKey,
-        JSON.stringify({ role: "assistant", content: reply })
-      );
-
       await this.redis.ltrim(redisKey, -10, -1);
-
       await this.redis.expire(redisKey, 600);
 
       return { reply };
-
     } catch (error) {
-      return {
-        error: error.message || 'Ollama request failed'
-      };
+      console.error('Chatbot error:', error.message);
+      return { error: error.message || 'Gemini request failed' };
     }
   }
 }

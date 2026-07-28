@@ -1,17 +1,18 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import Redis from 'ioredis';
-import { Ollama } from 'ollama';
-
-const ollama = new Ollama({ host: process.env.OLLAMA_HOST || 'http://localhost:11434' });
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 @Injectable()
 export class RoadmapService {
+  private genAI: GoogleGenerativeAI;
+
   constructor(
     private prisma: PrismaService,
     @Inject('REDIS_CLIENT') private readonly redis: Redis,
-  ) {}
+  ) {
+    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+  }
 
   async getRoadmap(req) {
     const userId = req.user.userId;
@@ -64,13 +65,13 @@ Return ONLY a JSON object in this exact format (no markdown, no code fences):
 
 Make it specific and actionable for a ${role} role. Include real resource names (LeetCode, Neetcode, specific books, etc.). Return ONLY the JSON.`;
 
-    const response = await ollama.chat({
-      model: OLLAMA_MODEL,
-      messages: [{ role: 'user', content: prompt }],
-      format: 'json',
+    const model = this.genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      generationConfig: { responseMimeType: 'application/json' },
     });
 
-    const rawText = response.message.content;
+    const result = await model.generateContent(prompt);
+    const rawText = result.response.text();
 
     const cleaned = rawText.replace(/```json|```/g, '').trim();
     const roadmap = JSON.parse(cleaned);

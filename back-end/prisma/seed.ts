@@ -1,6 +1,10 @@
+import 'dotenv/config';
 import { PrismaClient, Role } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter });
+
 
 async function main() {
   console.log('🌱 Seeding MCQ questions and Interview Question Bank...');
@@ -481,10 +485,66 @@ async function main() {
   await prisma.interviewQuestion.createMany({ data: interviewQuestions, skipDuplicates: true });
   console.log(`✅ Seeded ${interviewQuestions.length} interview questions`);
 
+  // ─── Resource Tutorials ────────────────────────────────────────────────────
+
+  const tutorials = [
+    // ── Web Developer ──
+    { role: Role.WebDeveloper, skill: 'React', source: 'YouTube', url: 'https://www.youtube.com/watch?v=bMknfKXIFA8', description: 'React Full Course for Beginners — freeCodeCamp', imageURL: 'https://i.ytimg.com/vi/bMknfKXIFA8/hqdefault.jpg', cost: 0 },
+    { role: Role.WebDeveloper, skill: 'React', source: 'Course', url: 'https://react.dev/learn', description: 'Official React Docs — Learn React', imageURL: 'https://react.dev/images/og-learn.png', cost: 0 },
+    { role: Role.WebDeveloper, skill: 'JavaScript', source: 'YouTube', url: 'https://www.youtube.com/watch?v=W6NZfCO5SIk', description: 'JavaScript Tutorial for Beginners — Programming with Mosh', imageURL: 'https://i.ytimg.com/vi/W6NZfCO5SIk/hqdefault.jpg', cost: 0 },
+    { role: Role.WebDeveloper, skill: 'JavaScript', source: 'Course', url: 'https://javascript.info', description: 'The Modern JavaScript Tutorial — javascript.info', imageURL: 'https://javascript.info/img/site_preview_en_1200x630.png', cost: 0 },
+    { role: Role.WebDeveloper, skill: 'CSS', source: 'YouTube', url: 'https://www.youtube.com/watch?v=yfoY53QXEnI', description: 'CSS Crash Course For Absolute Beginners — Traversy Media', imageURL: 'https://i.ytimg.com/vi/yfoY53QXEnI/hqdefault.jpg', cost: 0 },
+    { role: Role.WebDeveloper, skill: 'NodeJS', source: 'YouTube', url: 'https://www.youtube.com/watch?v=TlB_eWDSMt4', description: 'Node.js Tutorial for Beginners — Programming with Mosh', imageURL: 'https://i.ytimg.com/vi/TlB_eWDSMt4/hqdefault.jpg', cost: 0 },
+    { role: Role.WebDeveloper, skill: 'HTML', source: 'Course', url: 'https://www.freecodecamp.org/learn/responsive-web-design/', description: 'Responsive Web Design Certification — freeCodeCamp', imageURL: 'https://design-style-guide.freecodecamp.org/downloads/fcc_secondary_small.jpg', cost: 0 },
+
+    // ── Data Analyst ──
+    { role: Role.DataAnalyst, skill: 'Python', source: 'YouTube', url: 'https://www.youtube.com/watch?v=rfscVS0vtbw', description: 'Learn Python — Full Course for Beginners — freeCodeCamp', imageURL: 'https://i.ytimg.com/vi/rfscVS0vtbw/hqdefault.jpg', cost: 0 },
+    { role: Role.DataAnalyst, skill: 'Python', source: 'Course', url: 'https://www.kaggle.com/learn/python', description: 'Python Course — Kaggle Learn', imageURL: 'https://storage.googleapis.com/kaggle-media/learn/images/UtopPBk.png', cost: 0 },
+    { role: Role.DataAnalyst, skill: 'SQL', source: 'YouTube', url: 'https://www.youtube.com/watch?v=HXV3zeQKqGY', description: 'SQL Tutorial — Full Database Course for Beginners — freeCodeCamp', imageURL: 'https://i.ytimg.com/vi/HXV3zeQKqGY/hqdefault.jpg', cost: 0 },
+    { role: Role.DataAnalyst, skill: 'SQL', source: 'Course', url: 'https://mode.com/sql-tutorial/', description: 'SQL Tutorial — Mode Analytics', imageURL: 'https://mode.com/images/mode-logo-mark-600px.png', cost: 0 },
+    { role: Role.DataAnalyst, skill: 'Tableau', source: 'YouTube', url: 'https://www.youtube.com/watch?v=aHaOIvR00So', description: 'Tableau for Beginners — Full Course — Alex The Analyst', imageURL: 'https://i.ytimg.com/vi/aHaOIvR00So/hqdefault.jpg', cost: 0 },
+    { role: Role.DataAnalyst, skill: 'Pandas', source: 'Course', url: 'https://www.kaggle.com/learn/pandas', description: 'Pandas Course — Kaggle Learn', imageURL: 'https://storage.googleapis.com/kaggle-media/learn/images/gtWxx58.png', cost: 0 },
+    { role: Role.DataAnalyst, skill: 'Excel', source: 'YouTube', url: 'https://www.youtube.com/watch?v=rwbho0CgEAI', description: 'Excel for Beginners — Full Course — Kevin Stratvert', imageURL: 'https://i.ytimg.com/vi/rwbho0CgEAI/hqdefault.jpg', cost: 0 },
+
+    // ── Application Developer ──
+    { role: Role.ApplicationDeveloper, skill: 'Flutter', source: 'YouTube', url: 'https://www.youtube.com/watch?v=VPvVD8t02U8', description: 'Flutter Course for Beginners — freeCodeCamp', imageURL: 'https://i.ytimg.com/vi/VPvVD8t02U8/hqdefault.jpg', cost: 0 },
+    { role: Role.ApplicationDeveloper, skill: 'Flutter', source: 'Course', url: 'https://flutter.dev/learn', description: 'Official Flutter Learning Resources', imageURL: 'https://storage.googleapis.com/cms-storage-bucket/images/flutter-logo-sharing.png', cost: 0 },
+    { role: Role.ApplicationDeveloper, skill: 'React Native', source: 'YouTube', url: 'https://www.youtube.com/watch?v=obH0Po_RdWk', description: 'React Native Tutorial — Expo — freeCodeCamp', imageURL: 'https://i.ytimg.com/vi/obH0Po_RdWk/hqdefault.jpg', cost: 0 },
+    { role: Role.ApplicationDeveloper, skill: 'Swift', source: 'Course', url: 'https://developer.apple.com/tutorials/swiftui', description: 'Introducing SwiftUI — Apple Developer Tutorials', imageURL: 'https://developer.apple.com/news/images/og/swiftui-og.jpg', cost: 0 },
+    { role: Role.ApplicationDeveloper, skill: 'Kotlin', source: 'YouTube', url: 'https://www.youtube.com/watch?v=F9UC9DY-vIU', description: 'Kotlin Course — Tutorial for Beginners — freeCodeCamp', imageURL: 'https://i.ytimg.com/vi/F9UC9DY-vIU/hqdefault.jpg', cost: 0 },
+    { role: Role.ApplicationDeveloper, skill: 'Java', source: 'YouTube', url: 'https://www.youtube.com/watch?v=grEKMHGYyns', description: 'Java Full Course — Telusko', imageURL: 'https://i.ytimg.com/vi/grEKMHGYyns/hqdefault.jpg', cost: 0 },
+
+    // ── Cloud Engineer ──
+    { role: Role.CloudEngineer, skill: 'AWS', source: 'YouTube', url: 'https://www.youtube.com/watch?v=k1RI5locZE4', description: 'AWS Certified Cloud Practitioner — Full Course — freeCodeCamp', imageURL: 'https://i.ytimg.com/vi/k1RI5locZE4/hqdefault.jpg', cost: 0 },
+    { role: Role.CloudEngineer, skill: 'AWS', source: 'Course', url: 'https://aws.amazon.com/training/digital/', description: 'AWS Digital Training — Free Courses', imageURL: 'https://d1.awsstatic.com/training-and-certification/logos/Training-and-Certification_logo.85e92e282c19de04b6b0ee84e8bdf67d4ac80eb1.png', cost: 0 },
+    { role: Role.CloudEngineer, skill: 'Docker', source: 'YouTube', url: 'https://www.youtube.com/watch?v=fqMOX6JJhGo', description: 'Docker Tutorial for Beginners — TechWorld with Nana', imageURL: 'https://i.ytimg.com/vi/fqMOX6JJhGo/hqdefault.jpg', cost: 0 },
+    { role: Role.CloudEngineer, skill: 'Kubernetes', source: 'YouTube', url: 'https://www.youtube.com/watch?v=X48VuDVv0do', description: 'Kubernetes Tutorial for Beginners — TechWorld with Nana', imageURL: 'https://i.ytimg.com/vi/X48VuDVv0do/hqdefault.jpg', cost: 0 },
+    { role: Role.CloudEngineer, skill: 'Terraform', source: 'YouTube', url: 'https://www.youtube.com/watch?v=SLB_c_ayRMo', description: 'Terraform Course — Automate your AWS Infrastructure — freeCodeCamp', imageURL: 'https://i.ytimg.com/vi/SLB_c_ayRMo/hqdefault.jpg', cost: 0 },
+    { role: Role.CloudEngineer, skill: 'CI/CD', source: 'YouTube', url: 'https://www.youtube.com/watch?v=1hof2BPdxkk', description: 'GitHub Actions CI/CD Tutorial — Full Course — TechWorld with Nana', imageURL: 'https://i.ytimg.com/vi/1hof2BPdxkk/hqdefault.jpg', cost: 0 },
+
+    // ── Cybersecurity Analyst ──
+    { role: Role.CybersecurityAnalyst, skill: 'Network Security', source: 'YouTube', url: 'https://www.youtube.com/watch?v=3QhU9jd03a0', description: 'Networking Full Course — CompTIA Network+ — Professor Messer', imageURL: 'https://i.ytimg.com/vi/3QhU9jd03a0/hqdefault.jpg', cost: 0 },
+    { role: Role.CybersecurityAnalyst, skill: 'Linux', source: 'YouTube', url: 'https://www.youtube.com/watch?v=sWbUDq4S6Y8', description: 'Linux for Hackers — Full Course — NetworkChuck', imageURL: 'https://i.ytimg.com/vi/sWbUDq4S6Y8/hqdefault.jpg', cost: 0 },
+    { role: Role.CybersecurityAnalyst, skill: 'Penetration Testing', source: 'Course', url: 'https://tryhackme.com/path/outline/jr-penetration-tester', description: 'Jr Penetration Tester Path — TryHackMe', imageURL: 'https://assets.tryhackme.com/img/logo/tryhackme_logo_full.svg', cost: 0 },
+    { role: Role.CybersecurityAnalyst, skill: 'Cryptography', source: 'YouTube', url: 'https://www.youtube.com/watch?v=AQDCe585Lnc', description: 'Cryptography Full Course — freeCodeCamp', imageURL: 'https://i.ytimg.com/vi/AQDCe585Lnc/hqdefault.jpg', cost: 0 },
+    { role: Role.CybersecurityAnalyst, skill: 'Wireshark', source: 'YouTube', url: 'https://www.youtube.com/watch?v=lb1Dw0elw0Q', description: 'Wireshark Full Tutorial — David Bombal', imageURL: 'https://i.ytimg.com/vi/lb1Dw0elw0Q/hqdefault.jpg', cost: 0 },
+
+    // ── Machine Learning Engineer ──
+    { role: Role.MachineLearningEngineer, skill: 'Python', source: 'Course', url: 'https://www.kaggle.com/learn/python', description: 'Python for ML — Kaggle Learn', imageURL: 'https://storage.googleapis.com/kaggle-media/learn/images/UtopPBk.png', cost: 0 },
+    { role: Role.MachineLearningEngineer, skill: 'TensorFlow', source: 'YouTube', url: 'https://www.youtube.com/watch?v=tPYj3fFJGjk', description: 'TensorFlow 2.0 Full Tutorial — freeCodeCamp', imageURL: 'https://i.ytimg.com/vi/tPYj3fFJGjk/hqdefault.jpg', cost: 0 },
+    { role: Role.MachineLearningEngineer, skill: 'PyTorch', source: 'YouTube', url: 'https://www.youtube.com/watch?v=V_xro1bcAuA', description: 'PyTorch for Deep Learning — Full Course — freeCodeCamp', imageURL: 'https://i.ytimg.com/vi/V_xro1bcAuA/hqdefault.jpg', cost: 0 },
+    { role: Role.MachineLearningEngineer, skill: 'Scikit-Learn', source: 'Course', url: 'https://www.kaggle.com/learn/intro-to-machine-learning', description: 'Intro to Machine Learning — Kaggle Learn', imageURL: 'https://storage.googleapis.com/kaggle-media/learn/images/gtWxx58.png', cost: 0 },
+    { role: Role.MachineLearningEngineer, skill: 'Deep Learning', source: 'Course', url: 'https://www.deeplearning.ai/courses/deep-learning-specialization/', description: 'Deep Learning Specialization — DeepLearning.AI', imageURL: 'https://d3njjcbhbojbot.cloudfront.net/api/utilities/v1/imageproxy/https://coursera_assets.s3.amazonaws.com/images/de1a2f05a2cc44e68a5d4bcbc2e53218.png', cost: 0 },
+  ];
+
+  await prisma.resourceTutorial.createMany({ data: tutorials, skipDuplicates: true });
+  console.log(`✅ Seeded ${tutorials.length} resource tutorials`);
+
   console.log('🌱 Seeding complete!');
 }
 
 main()
+
   .catch((e) => {
     console.error(e);
     process.exit(1);
